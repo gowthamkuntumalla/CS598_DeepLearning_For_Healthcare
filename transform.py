@@ -6,10 +6,10 @@ from config import Config
 from patient_data_reader import PatientReader
 
 
-input_file = '../resource/snow_case_with_facilities.txt'
-vocab_file = '../resource/vocab.txt'
-stop_file = '../resource/stop.txt'
-vocab_pkl = '../resource/vocab.pkl'
+input_file = 'resource/snow_case_with_facilities.txt'
+vocab_file = 'resource/vocab.txt'
+stop_file = 'resource/stop.txt'
+vocab_pkl = 'resource/vocab.pkl'
 
 rare_word = 100
 stop_word = 1e4
@@ -23,7 +23,7 @@ def dump_vocab():
     # .to_frame(): indexed by the groups, with a custom name
     # .reset_index(): set the groups to be columns again
     hist = df.groupby('DX_GROUP_DESCRIPTION').size().to_frame('SIZE').reset_index()
-    print(hist[0:3])
+    # print(hist[0:3])
 
     # show some stats
     hist_sort = hist.sort_values(by='SIZE', ascending=False)
@@ -129,12 +129,12 @@ def split_data(docs, labels):
     print(len(labels))
     #print(labels)
 
-    save_pkl('../resource/X_train.pkl', docs[:4000])
-    save_pkl('../resource/Y_train.pkl', labels[:4000])
-    save_pkl('../resource/X_valid.pkl', docs[4000:4700])
-    save_pkl('../resource/Y_valid.pkl', labels[4000:4700])
-    save_pkl('../resource/X_test.pkl', docs[4700:])
-    save_pkl('../resource/Y_test.pkl', labels[4700:])
+    save_pkl('resource/X_train.pkl', docs[:2000])
+    save_pkl('resource/Y_train.pkl', labels[:2000])
+    save_pkl('resource/X_valid.pkl', docs[2000:2500])
+    save_pkl('resource/Y_valid.pkl', labels[2000:2500])
+    save_pkl('resource/X_test.pkl', docs[2500:])
+    save_pkl('resource/Y_test.pkl', labels[2500:])
 
 
 def extract_events():

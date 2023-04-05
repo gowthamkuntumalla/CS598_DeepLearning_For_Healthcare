@@ -1,7 +1,7 @@
 class Config:
     """feel free to play with these hyperparameters during training"""
     dataset = "resource"  # change this to the right data name
-    data_path = "../%s" % dataset
+    data_path = "%s" % dataset
     checkpoint_dir = "checkpoint"
     decay_rate = 0.95
     decay_step = 1000
@@ -21,4 +21,4 @@ class Config:
     threshold = 0.5 #probability cut-off for predicting label to be 1
     forward_only = False #indicates whether we are in testing or training mode
 
-    log_dir = '../logs'
+    log_dir = 'logs'
