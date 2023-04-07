@@ -5,7 +5,9 @@ if __name__ == "__main__":
         root="https://storage.googleapis.com/pyhealth/Synthetic_MIMIC-III/",
         tables=["DIAGNOSES_ICD", "PROCEDURES_ICD", "PRESCRIPTIONS"],
     )
+    from pyhealth.medcode import InnerMap
 
+    icd9cm = InnerMap.load("ICD9CM")
     mimic3_ds.stat()
 
     mimic3_ds.info()
