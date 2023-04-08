@@ -182,8 +182,8 @@ def main():
     config = Config()
     reader = PatientReader(config)
     iterator = reader.iterator()
-    X, Xc = iterator[0].next()
-    Y, seq_len = iterator[1].next()
+    X, Xc = next(iterator[0])
+    Y, seq_len = next(iterator[1])
     #printing stuff to debug
     print("X is of shape CxT_patient: ", X)
     print("Xc is of shape Cx1: ", Xc.shape)  
