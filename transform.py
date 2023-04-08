@@ -50,6 +50,7 @@ def load_vocab():
     with open(vocab_file, mode='r') as f:
         line = f.readline()
         while line != '':
+            # print(line)
             tokens = line.strip().split('\t')
             word_to_index[tokens[1]] = int(tokens[0])
             line = f.readline()
