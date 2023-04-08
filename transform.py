@@ -170,7 +170,7 @@ def tag_logic(events, pid, day_id):
 
 
 def main():
-    # dump_vocab()
+    dump_vocab()
     word_to_index = load_vocab()
     events = extract_events()
 
