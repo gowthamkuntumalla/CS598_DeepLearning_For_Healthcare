@@ -1,0 +1,6 @@
+# using python 3.7
+
+C:\Users\liyim\PycharmProjects\CONTENT\venv\Scripts\python.exe -m pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
+C:\Users\liyim\PycharmProjects\CONTENT\venv\Scripts\python.exe -m pip install --upgrade https://github.com/Theano/Theano/archive/master.zip
+
+matplotlib, scikit-learn, pandas
