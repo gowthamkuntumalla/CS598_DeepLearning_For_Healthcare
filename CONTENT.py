@@ -17,9 +17,9 @@ from patient_data_reader import PatientReader
 import os
 import time
 import numpy as np
-from lasagne.layers.timefusion import MaskingLayer
+# from lasagne.layers.timefusion import MaskingLayer
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, accuracy_score, precision_recall_curve
-from lasagne.layers.theta import ThetaLayer
+from layers import ThetaLayer
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import average_precision_score as pr_auc
 
@@ -107,6 +107,7 @@ def main(data_sets, W_embed):
     # First, we build the network, starting with an input layer
     # Recurrent layers expect input of shape
     # (batch size, max sequence length, number of features)
+    # N_BATCH = 1, MAX_LENGTH = 300, N_VOCAB = 619
     l_in = lasagne.layers.InputLayer(shape=(N_BATCH, MAX_LENGTH, N_VOCAB))
     # l_label = lasagne.layers.InputLayer(shape=(N_BATCH, MAX_LENGTH, 1))
 
@@ -125,7 +126,8 @@ def main(data_sets, W_embed):
         l_embed, N_HIDDEN, mask_input=l_mask, grad_clipping=GRAD_CLIP,
         only_return_final=False)
 
-    l_forward = MaskingLayer([l_forward0, l_mask])
+    # REDUNDENT
+    # l_forward = MaskingLayer([l_forward0, l_mask])
 
     l_1 = lasagne.layers.DenseLayer(l_in, num_units=N_HIDDEN, nonlinearity=lasagne.nonlinearities.rectify,
                                     num_leading_axes=2)
@@ -139,10 +141,13 @@ def main(data_sets, W_embed):
 
     l_B = lasagne.layers.DenseLayer(l_in, b=None, num_units=n_topics, nonlinearity=None, num_leading_axes=2)
     l_context = lasagne.layers.ElemwiseMergeLayer([l_B, l_theta], T.mul)
-    l_context = lasagne.layers.ExpressionLayer(l_context, lambda X: X.mean(-1), output_shape="auto")
+    #####
+    #####
+    #### Yiming at 2023-04-09 HUGE BUG!!!!
+    l_context = lasagne.layers.ExpressionLayer(l_B, lambda X: X.mean(-1), output_shape="auto")
 
     l_dense0 = lasagne.layers.DenseLayer(
-        l_forward, num_units=1, nonlinearity=None, num_leading_axes=2)
+        l_forward0, num_units=1, nonlinearity=None, num_leading_axes=2)
     l_dense1 = lasagne.layers.reshape(l_dense0, ([0], [1]))  # batchsize * maxlen
     l_dense = lasagne.layers.ElemwiseMergeLayer([l_dense1, l_context], T.add)
     l_out0 = lasagne.layers.NonlinearityLayer(l_dense, nonlinearity=lasagne.nonlinearities.sigmoid)
@@ -495,9 +500,9 @@ def clustering(thetaPath, dataset):
 if __name__ == '__main__':
     FLAGS = Config()
     data_sets = PatientReader(FLAGS)
-    wordvecPath = os.path.join(FLAGS.data_path, "word2vec.vector")
-    W_embed = loadEmbeddingMatrix(wordvecPath)
-    # main(data_sets, W_embed)
+    # wordvecPath = os.path.join(FLAGS.data_path, "word2vec.vector")
+    # W_embed = loadEmbeddingMatrix(wordvecPath)
+    main(data_sets, None)
     # eval(2)
 
     thetaPath = "theta_with_rnnvec/thetas_train0.npy"
