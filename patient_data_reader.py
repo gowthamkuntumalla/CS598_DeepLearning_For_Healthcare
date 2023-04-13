@@ -2,7 +2,7 @@
 import os
 import itertools
 import numpy as np
-import nltk
+# import nltk
 import math
 from util import *
 

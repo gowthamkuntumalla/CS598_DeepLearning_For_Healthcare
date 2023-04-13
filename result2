@@ -1,0 +1,44 @@
+Epoch 6 of 6 took 844.817s
+  training loss:		3076.161407
+Final results:
+  test loss:		3070.832974
+  test auc:		0.794328
+  test pr_auc:		0.643530
+  test accuracy:		82.92 %
+  test Precision, Recall and F1:		0.6637 %		0.4802		0.5572
+
+Epoch 6 of 6 took 1470.780s
+  training loss:		3076.015561
+Final results:
+  test loss:		3069.912781
+  test auc:		0.796055
+  test pr_auc:		0.647499
+  test accuracy:		83.77 %
+  test Precision, Recall and F1:		0.7298 %		0.4363		0.5461
+
+ Epoch 6 of 6 took 963.580s
+  training loss:		3076.076853
+Final results:
+  test loss:		3070.457023
+  test auc:		0.792356
+  test pr_auc:		0.642068
+  test accuracy:		83.79 %
+  test Precision, Recall and F1:		0.7431 %		0.4213		0.5377
+
+Epoch 6 of 6 took 1041.562s
+  training loss:		3075.866599
+Final results:
+  test loss:		3070.324151
+  test auc:		0.793881
+  test pr_auc:		0.642676
+  test accuracy:		83.44 %
+  test Precision, Recall and F1:		0.7107 %		0.4386		0.5424
+
+Epoch 6 of 6 took 866.147s
+  training loss:		3076.078234
+Final results:
+  test loss:		3070.253270
+  test auc:		0.792737
+  test pr_auc:		0.643671
+  test accuracy:		83.58 %
+  test Precision, Recall and F1:		0.7225 %		0.4323		0.5410

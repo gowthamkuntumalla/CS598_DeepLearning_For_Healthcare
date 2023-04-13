@@ -17,9 +17,12 @@ from patient_data_reader import PatientReader
 import os
 import time
 import numpy as np
-from lasagne.layers.timefusion import MaskingLayer
+# from lasagne.layers.timefusion import MaskingLayer
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, accuracy_score, precision_recall_curve
-from lasagne.layers.theta import ThetaLayer
+from layers import ThetaLayer
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import average_precision_score as pr_auc
+from tqdm import tqdm
 
 # Number of units in the hidden (recurrent) layer
 N_HIDDEN = 200
@@ -59,11 +62,13 @@ def iterate_minibatches_listinputs(inputs, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield [input[excerpt] for input in inputs]
 
+
 def cut_sel(paddedMat, lengths):
     newVec = []
     for i in range(len(paddedMat)):
-        newVec.extend(paddedMat[i,:].flatten()[:lengths[i][0]])
+        newVec.extend(paddedMat[i, :].flatten()[:lengths[i][0]])
     return newVec
+
 
 def main(data_sets):
     # Optimization learning rate
@@ -72,20 +77,22 @@ def main(data_sets):
     # Min/max sequence length
     MAX_LENGTH = 300
     X_raw_data, Y_raw_data = data_sets.get_data_from_type("train")
-    trainingAdmiSeqs, trainingMask, trainingLabels, trainingLengths, ltr = prepare_data(X_raw_data, Y_raw_data, vocabsize= 619, maxlen = MAX_LENGTH)
+    trainingAdmiSeqs, trainingMask, trainingLabels, trainingLengths, ltr = prepare_data(X_raw_data, Y_raw_data,
+                                                                                        vocabsize=619,
+                                                                                        maxlen=MAX_LENGTH)
     Num_Samples, MAX_LENGTH, N_VOCAB = trainingAdmiSeqs.shape
 
     X_valid_data, Y_valid_data = data_sets.get_data_from_type("valid")
-    validAdmiSeqs, validMask, validLabels, validLengths, lval  = prepare_data(X_valid_data, Y_valid_data, vocabsize= 619, maxlen = MAX_LENGTH)
+    validAdmiSeqs, validMask, validLabels, validLengths, lval = prepare_data(X_valid_data, Y_valid_data, vocabsize=619,
+                                                                             maxlen=MAX_LENGTH)
 
     X_test_data, Y_test_data = data_sets.get_data_from_type("test")
-    test_admiSeqs, test_mask, test_labels, testLengths, ltes = prepare_data(X_test_data, Y_test_data, vocabsize= 619, maxlen = MAX_LENGTH)
+    test_admiSeqs, test_mask, test_labels, testLengths, ltes = prepare_data(X_test_data, Y_test_data, vocabsize=619,
+                                                                            maxlen=MAX_LENGTH)
     alllength = sum(trainingLengths) + sum(validLengths) + sum(testLengths)
     print(alllength)
-    eventNum = sum(ltr)+sum(lval)+sum(ltes)
+    eventNum = sum(ltr) + sum(lval) + sum(ltes)
     print(eventNum)
-
-
 
     print("Building network ...")
     N_BATCH = 100
@@ -101,26 +108,29 @@ def main(data_sets):
     embedsize = 100
     n_topics = 50
     l_embed = lasagne.layers.DenseLayer(l_in, num_units=embedsize, num_leading_axes=2)
-    #l_drop = lasagne.layers.dropout(l_embed)
-    l_forward = lasagne.layers.GRULayer(
+    # l_drop = lasagne.layers.dropout(l_embed)
+    l_forward0 = lasagne.layers.GRULayer(
         l_embed, N_HIDDEN, mask_input=l_mask, grad_clipping=GRAD_CLIP,
         only_return_final=False)
 
-    l_forward = MaskingLayer([l_forward, l_mask])
+    # REDUNDENT
+    # l_forward = MaskingLayer([l_forward0, l_mask])
 
-    l_1 = lasagne.layers.DenseLayer(l_in, num_units=N_HIDDEN, nonlinearity=lasagne.nonlinearities.rectify, num_leading_axes=2)
-    l_2 = lasagne.layers.DenseLayer(l_1, num_units=N_HIDDEN, nonlinearity=lasagne.nonlinearities.rectify, num_leading_axes=2)
-    mu = lasagne.layers.DenseLayer(l_2, num_units=n_topics, nonlinearity=None, num_leading_axes=1)# batchsize * n_topic
-    log_sigma = lasagne.layers.DenseLayer(l_2, num_units=n_topics, nonlinearity=None, num_leading_axes=1)# batchsize * n_topic
-    l_theta = ThetaLayer([mu,log_sigma],maxlen = MAX_LENGTH)#batchsize * maxlen
+    l_1 = lasagne.layers.DenseLayer(l_in, num_units=N_HIDDEN, nonlinearity=lasagne.nonlinearities.rectify,
+                                    num_leading_axes=2)
+    l_2 = lasagne.layers.DenseLayer(l_1, num_units=N_HIDDEN, nonlinearity=lasagne.nonlinearities.rectify,
+                                    num_leading_axes=2)
+    mu = lasagne.layers.DenseLayer(l_2, num_units=n_topics, nonlinearity=None,
+                                   num_leading_axes=1)  # batchsize * n_topic
+    log_sigma = lasagne.layers.DenseLayer(l_2, num_units=n_topics, nonlinearity=None,
+                                          num_leading_axes=1)  # batchsize * n_topic
+    l_theta = ThetaLayer([mu, log_sigma], maxlen=MAX_LENGTH)  # batchsize * maxlen
 
     l_dense0 = lasagne.layers.DenseLayer(
-        l_forward, num_units=1, nonlinearity=None,num_leading_axes=2)
-    l_dense1 = lasagne.layers.reshape(l_dense0, ([0], [1]))#batchsize * maxlen
-    l_dense = lasagne.layers.ElemwiseMergeLayer([l_dense1, l_theta],T.add)
-    l_out = lasagne.layers.NonlinearityLayer(l_dense,nonlinearity=lasagne.nonlinearities.sigmoid)
-
-
+        l_forward0, num_units=1, nonlinearity=None, num_leading_axes=2)
+    l_dense1 = lasagne.layers.reshape(l_dense0, ([0], [1]))  # batchsize * maxlen
+    l_dense = lasagne.layers.ElemwiseMergeLayer([l_dense1, l_theta], T.add)
+    l_out = lasagne.layers.NonlinearityLayer(l_dense, nonlinearity=lasagne.nonlinearities.sigmoid)
 
     target_values = T.matrix('target_output')
     target_values_flat = T.flatten(target_values)
@@ -133,12 +143,11 @@ def main(data_sets):
     # Our cost will be mean-squared error
     cost = lasagne.objectives.binary_crossentropy(predicted_values, target_values_flat)
     kl_term = l_theta.klterm
-    cost = cost.sum()+kl_term
-
+    cost = cost.sum() + kl_term
 
     test_output = lasagne.layers.get_output(l_out, deterministic=True)
 
-    #cost = T.mean((predicted_values - target_values)**2)
+    # cost = T.mean((predicted_values - target_values)**2)
     # Retrieve all parameters from the network
     all_params = lasagne.layers.get_all_params(l_out)
 
@@ -150,11 +159,10 @@ def main(data_sets):
     train = theano.function([l_in.input_var, target_values, l_mask.input_var],
                             cost, updates=updates)
     compute_cost = theano.function(
-        [l_in.input_var, target_values, l_mask.input_var],cost)
+        [l_in.input_var, target_values, l_mask.input_var], cost)
     prd = theano.function([l_in.input_var, l_mask.input_var], test_output)
 
     # We'll use this "validation set" to periodically check progress
-
 
     print("Training ...")
     try:
@@ -197,21 +205,22 @@ def main(data_sets):
             test_batches = 0
             new_testlabels = []
             pred_testlabels = []
-            for batch in iterate_minibatches_listinputs([test_admiSeqs, test_labels, test_mask, testLengths], N_BATCH, shuffle=False):
+            for batch in iterate_minibatches_listinputs([test_admiSeqs, test_labels, test_mask, testLengths], N_BATCH,
+                                                        shuffle=False):
                 inputs = batch
                 err = compute_cost(inputs[0], inputs[1], inputs[2])
                 test_err += err
                 leng = inputs[3][0]
                 # new_testlabels.extend(inputs[1].flatten()[:leng])
                 # pred_testlabels.extend(prd(inputs[0], inputs[2]).flatten()[:leng])
-                new_testlabels.extend(cut_sel(inputs[1],inputs[3]))
-                pred_testlabels.extend(cut_sel(inputs[0],inputs[3]))
+                new_testlabels.extend(cut_sel(inputs[1], inputs[3]))
+                pred_testlabels.extend(cut_sel(inputs[0], inputs[3]))
                 test_batches += 1
             test_auc = roc_auc_score(new_testlabels, pred_testlabels)
-            np.save("CONTENT_results/testlabels_"+str(epoch),new_testlabels)
-            np.save("CONTENT_results/predlabels_"+str(epoch),pred_testlabels)
+            np.save("CONTENT_results/testlabels_" + str(epoch), new_testlabels)
+            np.save("CONTENT_results/predlabels_" + str(epoch), pred_testlabels)
 
-            pred_binary = [x>0.5 for x in pred_testlabels]
+            pred_binary = [x > 0.5 for x in pred_testlabels]
             test_pre_rec_f1 = precision_recall_fscore_support(new_testlabels, pred_binary, average='binary')
 
             print("Final results:")
@@ -219,7 +228,9 @@ def main(data_sets):
             print("  test auc:\t\t{:.6f}".format(test_auc))
             print("  test accuracy:\t\t{:.2f} %".format(
                 test_acc / test_batches * 100))
-            print("  test Precision, Recall and F1:\t\t{:.4f} %\t\t{:.4f}\t\t{:.4f}".format(test_pre_rec_f1[0], test_pre_rec_f1[1], test_pre_rec_f1[2]))
+            print("  test Precision, Recall and F1:\t\t{:.4f} %\t\t{:.4f}\t\t{:.4f}".format(test_pre_rec_f1[0],
+                                                                                            test_pre_rec_f1[1],
+                                                                                            test_pre_rec_f1[2]))
 
     except KeyboardInterrupt:
         pass
@@ -247,7 +258,6 @@ def prepare_data(seqs, labels, vocabsize, maxlen=None):
             t.extend(visit)
         eventSeq.append(t)
     eventLengths = [len(s) for s in eventSeq]
-
 
     if maxlen is not None:
         new_seqs = []
@@ -279,9 +289,9 @@ def prepare_data(seqs, labels, vocabsize, maxlen=None):
         x_mask[idx, :lengths[idx]] = 1
         for j, sj in enumerate(s):
             for tsj in sj:
-                x[idx, j, tsj-1] = 1
+                x[idx, j, tsj - 1] = 1
     for idx, t in enumerate(labels):
-        y[idx,:lengths[idx]] = t
+        y[idx, :lengths[idx]] = t
         # if lengths[idx] < maxlen:
         #     y[idx,lengths[idx]:] = t[-1]
 
@@ -289,10 +299,10 @@ def prepare_data(seqs, labels, vocabsize, maxlen=None):
 
 
 def eval(epoch):
-    new_testlabels = np.load("theta/testlabels_"+str(epoch)+".npy")
-    pred_testlabels = np.load("theta/predlabels_"+str(epoch)+".npy")
+    new_testlabels = np.load("theta/testlabels_" + str(epoch) + ".npy")
+    pred_testlabels = np.load("theta/predlabels_" + str(epoch) + ".npy")
     test_auc = roc_auc_score(new_testlabels, pred_testlabels)
-    test_acc = accuracy_score(new_testlabels, pred_testlabels>0.5)
+    test_acc = accuracy_score(new_testlabels, pred_testlabels > 0.5)
     print('AUC: %0.04f' % (test_auc))
     print('ACC: %0.04f' % (test_acc))
     pre, rec, threshold = precision_recall_curve(new_testlabels, pred_testlabels)
@@ -310,8 +320,8 @@ def eval(epoch):
     print('rnnAUC: %0.04f' % (test_auc))
     print('rnnACC: %0.04f' % (test_acc))
     print("  rnn test Precision, Recall and F1:\t\t{:.4f} %\t\t{:.4f}\t\t{:.4f}".format(test_pre_rec_f1[0],
-                                                                                    test_pre_rec_f1[1],
-                                                                                    test_pre_rec_f1[2]))
+                                                                                        test_pre_rec_f1[1],
+                                                                                        test_pre_rec_f1[2]))
     epoch = 6
     wv_testlabels = np.load("rnnwordvec_results/testlabels_" + str(epoch) + ".npy")
     wv_pred_testlabels = np.load("rnnwordvec_results/predlabels_" + str(epoch) + ".npy")
@@ -322,9 +332,8 @@ def eval(epoch):
     print('wvAUC: %0.04f' % (test_auc))
     print('wvACC: %0.04f' % (test_acc))
     print("  wv test Precision, Recall and F1:\t\t{:.4f} %\t\t{:.4f}\t\t{:.4f}".format(test_pre_rec_f1[0],
-                                                                                    test_pre_rec_f1[1],
-                                                                                    test_pre_rec_f1[2]))
-
+                                                                                       test_pre_rec_f1[1],
+                                                                                       test_pre_rec_f1[2]))
 
     import matplotlib.pyplot as plt
     plt.plot(rec, pre, label='CONTENT')
@@ -334,17 +343,18 @@ def eval(epoch):
 
     plt.title("Precision-Recall Curves")
 
-
     plt.show()
+
 
 def list2dic(_list):
     output = dict()
     for i in _list:
         if i in output:
-            output[i] +=1
+            output[i] += 1
         else:
             output[i] = 0
     return output
+
 
 def outputCodes(indexs, patientList):
     HightPat = []
@@ -353,7 +363,7 @@ def outputCodes(indexs, patientList):
     high = list2dic(HightPat)
     items = sorted(high.items(), key=lambda d: d[1], reverse=True)
     for key, value in items[:20]:
-        print(key,value)
+        print(key, value)
 
 
 def scatter(x, colors):
@@ -364,7 +374,7 @@ def scatter(x, colors):
     # We create a scatter plot.
     f = plt.figure(figsize=(8, 8))
     ax = plt.subplot(aspect='equal')
-    sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40,
+    sc = ax.scatter(x[:, 0], x[:, 1], lw=0, s=40,
                     c=palette[colors.astype(np.int)])
     plt.xlim(-25, 25)
     plt.ylim(-25, 25)
@@ -382,13 +392,14 @@ def scatter(x, colors):
         txts.append(txt)
     return f, ax, sc, txts
 
+
 def clustering(thetaPath, dataset):
     from sklearn.cluster import MiniBatchKMeans
     from sklearn.manifold import TSNE
 
     thetas = np.asarray(np.load(thetaPath))
     ypred = MiniBatchKMeans(n_clusters=50).fit_predict(thetas).flatten()
-    tsn = TSNE(random_state=2017,n_iter=300).fit_transform(thetas)
+    tsn = TSNE(random_state=2017, n_iter=300).fit_transform(thetas)
     scatter(tsn, ypred)
     plt.show()
     # indexs1 = np.where(ypred==1)[0]
@@ -417,12 +428,10 @@ def clustering(thetaPath, dataset):
     # print("\n")
 
 
-
-
 if __name__ == '__main__':
     FLAGS = Config()
     data_sets = PatientReader(FLAGS)
-    #main(data_sets)
+    # main(data_sets)
     # thetaPath = "theta/thetas1.npy"
     # clustering(thetaPath,data_sets)
     eval(1)

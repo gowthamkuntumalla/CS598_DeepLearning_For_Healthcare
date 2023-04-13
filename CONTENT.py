@@ -22,6 +22,7 @@ from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, accu
 from layers import ThetaLayer
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import average_precision_score as pr_auc
+from tqdm import tqdm
 
 # Number of units in the hidden (recurrent) layer
 N_HIDDEN = 200
@@ -196,16 +197,17 @@ def main(data_sets, W_embed):
             train_batches = 0
             start_time = time.time()
             thetas_train = []
-            for batch in iterate_minibatches_listinputs([trainingAdmiSeqs, trainingLabels, trainingMask], N_BATCH,
-                                                        shuffle=True):
+            print(2000, "total number of iters")
+            for batch in tqdm(iterate_minibatches_listinputs([trainingAdmiSeqs, trainingLabels, trainingMask], N_BATCH,
+                                                             shuffle=True)):
                 inputs = batch
                 train_err += train(inputs[0], inputs[1], inputs[2])
                 train_batches += 1
                 theta_train, rnnvec_train = output_theta(inputs[0], inputs[2])
                 rnnout_train = np.concatenate([theta_train, rnnvec_train], axis=1)
                 thetas_train.append(rnnout_train.flatten())
-                if (train_batches + 1) % 1000 == 0:
-                    print(train_batches)
+                # if (train_batches + 1) % 1000 == 0:
+                #     print(train_batches)
 
             np.save("theta_with_rnnvec/thetas_train" + str(epoch), thetas_train)
 
@@ -254,13 +256,13 @@ def main(data_sets, W_embed):
                 test_batches += 1
             test_auc = roc_auc_score(new_testlabels, pred_testlabels)
             test_pr_auc = pr_auc(new_testlabels, pred_testlabels)
-            # np.save("CONTENT_results/testlabels_"+str(epoch),new_testlabels)
-            # np.save("CONTENT_results/predlabels_"+str(epoch),pred_testlabels)
-            # np.save("CONTENT_results/thetas"+str(epoch),thetas)
+            np.save("CONTENT_results/testlabels_" + str(epoch), new_testlabels)
+            np.save("CONTENT_results/predlabels_" + str(epoch), pred_testlabels)
+            np.save("CONTENT_results/thetas" + str(epoch), thetas)
 
-            # np.save("theta_with_rnnvec/testlabels_"+str(epoch),new_testlabels)
-            # np.save("theta_with_rnnvec/predlabels_"+str(epoch),pred_testlabels)
-            # np.save("theta_with_rnnvec/thetas"+str(epoch),thetas)
+            np.save("theta_with_rnnvec/testlabels_" + str(epoch), new_testlabels)
+            np.save("theta_with_rnnvec/predlabels_" + str(epoch), pred_testlabels)
+            np.save("theta_with_rnnvec/thetas" + str(epoch), thetas)
 
             test_pre_rec_f1 = precision_recall_fscore_support(np.array(new_testlabels), np.array(pred_testlabels) > 0.5,
                                                               average='binary')
@@ -502,7 +504,7 @@ if __name__ == '__main__':
     data_sets = PatientReader(FLAGS)
     # wordvecPath = os.path.join(FLAGS.data_path, "word2vec.vector")
     # W_embed = loadEmbeddingMatrix(wordvecPath)
-    main(data_sets, None)
+    # main(data_sets, None)
     # eval(2)
 
     thetaPath = "theta_with_rnnvec/thetas_train0.npy"
