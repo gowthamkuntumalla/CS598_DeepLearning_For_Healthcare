@@ -171,12 +171,12 @@ def tag_logic(events, pid, day_id):
 
 
 def main():
-    dump_vocab()
-    word_to_index = load_vocab()
-    events = extract_events()
-
-    docs, labels = convert_format(word_to_index, events)
-    split_data(docs, labels)
+    # dump_vocab()
+    # word_to_index = load_vocab()
+    # events = extract_events()
+    #
+    # docs, labels = convert_format(word_to_index, events)
+    # split_data(docs, labels)
 
     # verify loading
     config = Config()
