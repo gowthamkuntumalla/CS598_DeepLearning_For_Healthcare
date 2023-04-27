@@ -504,7 +504,7 @@ if __name__ == '__main__':
     data_sets = PatientReader(FLAGS)
     # wordvecPath = os.path.join(FLAGS.data_path, "word2vec.vector")
     # W_embed = loadEmbeddingMatrix(wordvecPath)
-    # main(data_sets, None)
+    main(data_sets, None)
     # eval(2)
 
     thetaPath = "theta_with_rnnvec/thetas_train0.npy"
