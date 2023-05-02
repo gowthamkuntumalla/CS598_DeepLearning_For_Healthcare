@@ -40,6 +40,17 @@ Note: config.py and CONTENT.py both serve some config values /given values for p
 Output: files under theta_with_rnnvec folder
 
 
+## Pytorch version
+1. Install Jupyter notebooks.
+    https://jupyter.org/install
+2. Open Jupyter Notebook on Windows Powershell by suing the following cmd.
+`jupyer notebook`
+3. Open content_torch2.ipynb
+4. Check the config paramterers
+5. Run the notebook from beginning to the end.
+6. After training, CSV files with the test results for GRU (alone) 
+ and CONTENT (i.e. the full model) are generated.
+
 # Sources
 
 ## Paper Citation
